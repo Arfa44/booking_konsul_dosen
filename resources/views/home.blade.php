@@ -8,4 +8,5 @@
 <body>
     <h1>Ini adalah contoh halaman HOME</h1>
 </body>
-</html>
+</html> 
+
