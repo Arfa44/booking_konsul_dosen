@@ -3,10 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\RegisterController;
-use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\DosenController;
 use App\Http\Controllers\MahasiswaController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 
 // ========================
 // HALAMAN UMUM
@@ -23,49 +25,54 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 // ========================
 // LOGIN / LOGOUT
 // ========================
-Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('auth');
 Route::post('/logout', fn() => tap(Auth::logout(), fn() => redirect('/login')))->name('logout');
+
+// ========================
+// DASHBOARD UTAMA (untuk user role apa pun)
+// ========================
+Route::middleware('auth.jwt')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+});
 
 // ========================
 // DASHBOARD ADMIN
 // ========================
-Route::prefix('admin')->group(function () {
-    Route::view('/dashboard', 'layouts.dashboard')->name('layouts.dashboard');
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
 
-    Route::view('/mahasiswa', 'admin.mahasiswa');
-    Route::view('/riwayat', 'admin.riwayat');
-    Route::view('/jadwal', 'admin.jadwal');
-    Route::view('/jadwal_dosen', 'admin.jadwal');
-    Route::view('/pengaturan_sesi', 'admin.pengaturan_sesi');
-    Route::view('/izin_konsultasi', 'admin.izin_konsultasi');
-    Route::view('/dosen', 'admin.dosen');
-    Route::view('/Dashboard', 'admin.Dashboard');
+    // Mahasiswa
+    Route::get('/mahasiswa', [AdminController::class, 'indexMahasiswa'])->name('mahasiswa');
+    Route::get('/mahasiswa/tambah', [AdminController::class, 'tambahMahasiswa'])->name('mahasiswa.tambah');
+    Route::get('/mahasiswa/edit/{id}', [AdminController::class, 'editMahasiswa'])->name('mahasiswa.edit');
 
-    // Data Mahasiswa
-    Route::view('/tambah_data_mahasiswa', 'admin.tambah_data_mahasiswa');
-    Route::view('/edit_data_mahasiswa', 'admin.edit_data_mahasiswa');
-    Route::view('/hapus_data_mahasiswa', 'admin.hapus_data_mahasiswa');
+    // Dosen
+    Route::get('/dosen', [AdminController::class, 'indexDosen'])->name('dosen');
+    Route::get('/dosen/tambah', [AdminController::class, 'tambahDosen'])->name('dosen.tambah');
+    Route::get('/dosen/edit/{id}', [AdminController::class, 'editDosen'])->name('dosen.edit');
 
-    // Riwayat Konsultasi
-    Route::view('/tambah_riwayat_konsultasi_mahasiswa', 'admin.tambah_riwayat_konsultasi_mahasiswa');
-    Route::view('/edit_riwayat_konsultasi_mahasiswa', 'admin.edit_riwayat_konsultasi_mahasiswa');
-    Route::view('/riwayat_konsultasi', 'admin.riwayat_konsultasi');
+    // Jadwal
+    Route::get('/jadwal', [AdminController::class, 'jadwal'])->name('jadwal');
 
-    // Booking & Konsultasi
-    Route::view('/ajukan', 'admin.ajukan');
-    Route::view('/booking', 'admin.booking');
-    Route::view('/tambah_booking', 'admin.tambah_booking');
-    Route::view('/edit_konsultasi', 'admin.edit_konsultasi');
+    // Sesi Konsultasi
+    Route::get('/pengaturan_sesi', [AdminController::class, 'pengaturanSesi'])->name('pengaturan_sesi');
+
+    // Izin Konsultasi
+    Route::get('/izin_konsultasi', [AdminController::class, 'izinKonsultasi'])->name('izin_konsultasi');
+
+    // Riwayat
+    Route::get('/riwayat', [AdminController::class, 'riwayat'])->name('riwayat');
+
+    // Booking
+    Route::get('/booking', [AdminController::class, 'booking'])->name('booking');
+    Route::get('/booking/tambah', [AdminController::class, 'tambahBooking'])->name('booking.tambah');
+    Route::get('/booking/edit/{id}', [AdminController::class, 'editBooking'])->name('booking.edit');
 
     // Akun & Role
-    Route::view('/akun', 'admin.akun');
-    Route::view('/update_role', 'admin.update_role');
-
-    // Data Dosen
-    Route::view('/tambah_data_dosen', 'admin.tambah_data_dosen');
-    Route::view('/edit_data_dosen', 'admin.edit_data_dosen');
-    Route::view('/hapus_data_dosen', 'admin.hapus_data_dosen');
+    Route::get('/akun', [AdminController::class, 'indexAkun']);
+   // Route::get('/akun', [AdminController::class, 'indexAkun'])->name('akun');
+    Route::post('/akun/update-role', [AdminController::class, 'updateRole'])->name('akun.updateRole');
 });
 
 // ========================
@@ -74,7 +81,6 @@ Route::prefix('admin')->group(function () {
 Route::prefix('dashboard/dosen')->name('dosen.')->group(function () {
     Route::get('/', [DosenController::class, 'index'])->name('dashboard');
 
-    // Jadwal Konsultasi
     Route::get('/jadwal', [DosenController::class, 'indexJadwal'])->name('jadwal');
     Route::get('/jadwal/tambah', [DosenController::class, 'formTambahJadwal'])->name('jadwal.create');
     Route::post('/jadwal/simpan', [DosenController::class, 'simpanJadwal'])->name('jadwal.simpan');
@@ -82,16 +88,13 @@ Route::prefix('dashboard/dosen')->name('dosen.')->group(function () {
     Route::put('/jadwal/{id}', [DosenController::class, 'updateJadwal'])->name('jadwal.update');
     Route::delete('/jadwal/{id}', [DosenController::class, 'hapusJadwal'])->name('jadwal.delete');
 
-    // Sesi Konsultasi
     Route::get('/sesi', [DosenController::class, 'indexSesi'])->name('sesi');
     Route::post('/sesi', [DosenController::class, 'simpanSesi'])->name('sesi.simpan');
 
-    // Booking Konsultasi
     Route::get('/booking', [DosenController::class, 'indexBooking'])->name('booking');
     Route::post('/booking/{id}/setujui', [DosenController::class, 'setujuiBooking'])->name('booking.setujui');
     Route::post('/booking/{id}/tolak', [DosenController::class, 'tolakBooking'])->name('booking.tolak');
 
-    // Profil Dosen
     Route::get('/profil', [DosenController::class, 'profil'])->name('profil');
     Route::post('/profil', [DosenController::class, 'updateProfil'])->name('profil.update');
 });
@@ -102,13 +105,11 @@ Route::prefix('dashboard/dosen')->name('dosen.')->group(function () {
 Route::prefix('dashboard/mahasiswa')->name('mahasiswa.')->group(function () {
     Route::get('/', [MahasiswaController::class, 'index'])->name('dashboard');
 
-    // Jadwal, Booking, Status
     Route::get('/jadwal', [MahasiswaController::class, 'jadwalDosen'])->name('jadwal');
     Route::get('/booking', [MahasiswaController::class, 'formBooking'])->name('booking');
     Route::post('/booking', [MahasiswaController::class, 'simpanBooking'])->name('booking.simpan');
     Route::get('/status', [MahasiswaController::class, 'statusBooking'])->name('status');
 
-    // Profil Mahasiswa
     Route::get('/profil', [MahasiswaController::class, 'profil'])->name('profil');
     Route::post('/profil', [MahasiswaController::class, 'simpanProfil'])->name('profil.simpan');
 });

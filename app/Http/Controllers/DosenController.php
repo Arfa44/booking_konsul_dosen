@@ -1,169 +1,223 @@
 <?php
 
-//Ini controller dashboard dosen
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class DosenController extends Controller
 {
-    //ke index
+    // Halaman dashboard utama dosen
     public function index()
     {
-    return view('dosen.index_dosen');
+        return view('dosen.index_dosen');
     }
 
-    // Langkah 1: Lihat Jadwal Konsultasi
+    // ================================
+    // Lihat & Kelola Jadwal Konsultasi
+    // ================================
+
     public function indexJadwal()
-{
-    // Data dummy jadwal dosen
-    $jadwals = [
-        (object)[
-            'id' => 1,
-            'nama_dosen' => 'Dr. Andi Wijaya',
-            'tanggal' => '2025-06-20',
-            'jam_mulai' => '08:00',
-            'jam_selesai' => '10:00',
-            'ruang' => 'Ruang 301',
-        ],
-        (object)[
-            'id' => 2,
-            'nama_dosen' => 'Dr. Andi Wijaya',
-            'tanggal' => '2025-06-21',
-            'jam_mulai' => '10:30',
-            'jam_selesai' => '12:00',
-            'ruang' => 'Ruang 302',
-        ]
-    ];
+    {
+        $response = Http::get('http://localhost:8080/dosen/jadwal_konsultasi');
 
-    return view('dosen.dosen_jadwal', compact('jadwals'));
-}
+        if ($response->successful()) {
+            $jadwals = $response->json();
+        } else {
+            $jadwals = [];
+        }
 
+        return view('dosen.dosen_jadwal', compact('jadwals'));
+    }
 
-    //tambah jadwal dosen
     public function formTambahJadwal()
     {
         return view('dosen.tambah_jadwal');
     }
 
-    //simpan jadwal dosen
+
     public function simpanJadwal(Request $request)
     {
-    // Validasi input
-    $request->validate([
-        'tanggal' => 'required|date',
-        'jam_mulai' => 'required',
-        'jam_selesai' => 'required|after:jam_mulai',
-        'ruang' => 'required|string|max:100',
-    ]);
-
-    // Belum simpan ke database (data dummy)
-    // Bisa ditambahkan ke session atau ditampilkan saja alert sukses
-
-    return redirect()->route('dosen.jadwal')->with('success', 'Jadwal berhasil ditambahkan (dummy data).');
-    }
-
-    
-        public function editJadwal($id)
-    {
-        // Sementara data dummy
-        $jadwal = (object)[
-            'id' => $id,
-            'tanggal' => '2025-06-20',
-            'jam_mulai' => '08:00',
-           'jam_selesai' => '10:00',
-           'ruang' => 'Ruang 101',
-    ];
-
-    return view('dosen.edit_jadwal', compact('jadwal'));
-    }
-
-    public function updateJadwal(Request $request, $id)
-        {
-         $request->validate([
-             'tanggal' => 'required|date',
+        $request->validate([
+            'tanggal' => 'required|date',
             'jam_mulai' => 'required',
-             'jam_selesai' => 'required|after:jam_mulai',
-             'ruang' => 'required|string|max:100',
+            'jam_selesai' => 'required|after:jam_mulai',
+            'ruang' => 'required|string|max:100',
         ]);
 
-         // Simpan ke database nanti (sekarang dummy)
-         return redirect()->route('dosen.jadwal')->with('success', 'Jadwal berhasil diperbarui.');
+        $response = Http::post('http://localhost:8080/dosen/jadwal_konsultasi', [
+            'tanggal' => $request->tanggal,
+            'jam_mulai' => $request->jam_mulai,
+            'jam_selesai' => $request->jam_selesai,
+            'ruang' => $request->ruang,
+        ]);
+
+        if ($response->successful()) {
+            return redirect()->route('dosen.jadwal')->with('success', 'Jadwal berhasil ditambahkan.');
+        } else {
+            return back()->with('error', 'Gagal menambahkan jadwal.');
         }
+    }
 
+     public function editJadwal($id)
+    {
+        $response = Http::get("http://localhost:8080/dosen/konsultasi/$id");
 
-        public function hapusJadwal($id)
-        {
-          // Ini hanya dummy, karena belum konek ke database
-            return redirect()->route('dosen.jadwal')->with('success', 'Jadwal berhasil dihapus (dummy data).');
+        if ($response->successful()) {
+            $jadwal = (object) $response->json();
+            return view('dosen.edit_jadwal', compact('jadwal'));
+        } else {
+            return redirect()->route('dosen.jadwal')->with('error', 'Gagal mengambil data jadwal.');
         }
+    } 
+    public function updateJadwal(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal' => 'required|date',
+            'jam_mulai' => 'required',
+            'jam_selesai' => 'required|after:jam_mulai',
+            'ruang' => 'required|string|max:100',
+        ]);
 
+        $response = Http::put("http://localhost:8080/dosen/konsultasi/$id", [
+            'tanggal' => $request->tanggal,
+            'jam_mulai' => $request->jam_mulai,
+            'jam_selesai' => $request->jam_selesai,
+            'ruang' => $request->ruang,
+        ]);
 
-    // public function destroy($id)
+        if ($response->successful()) {
+            return redirect()->route('dosen.jadwal')->with('success', 'Jadwal berhasil diperbarui.');
+        } else {
+            return back()->with('error', 'Gagal memperbarui jadwal.');
+        }
+    }
+
+    public function hapusJadwal($id)
+    {
+        $response = Http::delete("http://localhost:8080/dosen/jadwal_konsultasi/$id");
+
+        if ($response->successful()) {
+            return redirect()->route('dosen.jadwal')->with('success', 'Jadwal berhasil dihapus.');
+        } else {
+            return redirect()->route('dosen.jadwal')->with('error', 'Gagal menghapus jadwal.');
+        }
+    }
+
+    // ================================
+    // FITUR DI SKIP  Atur Jumlah Sesi Konsultasi
+    // ================================
+
+    // public function indexSesi()
     // {
-    //     $jadwal = Jadwal::findOrFail($id);
-    //     $jadwal->delete();
+    //     $response = Http::get('http://localhost:8000/api/sesi-konsultasi');
 
-    //      return redirect()->route('dosen.jadwal.index')->with('success', 'Jadwal berhasil dihapus.');
+    //     if ($response->successful()) {
+    //         $sesis = $response->json();
+    //     } else {
+    //         $sesis = [];
+    //     }
+
+    //     return view('dosen.dosen_sesi', compact('sesis'));
     // }
 
+    // public function simpanSesi(Request $request)
+    // {
+    //     $request->validate([
+    //         'jumlah_sesi' => 'required|numeric|min:1',
+    //     ]);
 
- 
+    //     $response = Http::post('http://localhost:8000/api/sesi-konsultasi', [
+    //         'jumlah_sesi' => $request->jumlah_sesi,
+    //     ]);
 
-    // Langkah 2: Set / Atur Sesi Konsultasi
-    public function indexSesi()
-    {
-        return view('dosen.dosen_sesi');
-    }
+    //     if ($response->successful()) {
+    //         return redirect()->back()->with('success', 'Sesi konsultasi berhasil disimpan.');
+    //     } else {
+    //         return redirect()->back()->with('error', 'Gagal menyimpan sesi.');
+    //     }
+    // }
 
-    public function simpanSesi(Request $request)
-    {
-        // Simpan data sesi konsultasi ke database
-        // validasi dan simpan bisa ditambahkan sesuai kebutuhan
-        return redirect()->back()->with('success', 'Sesi konsultasi berhasil disimpan');
-    }
+    // ================================
+    //  Kelola Booking Konsultasi
+    // ================================
 
-    // Langkah 3: Lihat dan Kelola Booking Konsultasi
     public function indexBooking()
     {
-        return view('dosen.dosen_booking');
+        $response = Http::get('http://localhost:8080/dosen/konsultasi');
+
+        if ($response->successful()) {
+            $bookings = $response->json();
+        } else {
+            $bookings = [];
+        }
+
+        return view('dosen.dosen_booking', compact('bookings'));
     }
 
     public function setujuiBooking($id)
     {
-        // Logika menyetujui booking
-        return redirect()->back()->with('success', 'Booking disetujui.');
+        $response = Http::put("http://localhost:8080/dosen/konsultasi/$id/status", [
+            'status' => 'disetujui'
+        ]);
+
+        if ($response->successful()) {
+            return redirect()->back()->with('success', 'Booking disetujui.');
+        } else {
+            return redirect()->back()->with('error', 'Gagal menyetujui booking.');
+        }
     }
 
     public function tolakBooking($id)
     {
-        // Logika menolak booking
-        return redirect()->back()->with('success', 'Booking ditolak.');
+        $response = Http::put("http://localhost:8080/dosen/konsultasi/$id/status", [
+            'status' => 'ditolak'
+        ]);
+
+        if ($response->successful()) {
+            return redirect()->back()->with('success', 'Booking ditolak.');
+        } else {
+            return redirect()->back()->with('error', 'Gagal menolak booking.');
+        }
     }
+
+    // ================================
+    // PROFIL DOSEN
+    // ================================
 
     public function profil()
     {
-    // Dummy data seolah dari database
-        $detail = (object)[
-         'nidn' => '12345678',
-         'nama_dosen' => 'Dr. Siti Aminah, M.Kom'
-        ];
+        $id_user = session('id_user'); // Sesuaikan sesuai loginmu
+
+        $response = Http::get("http://localhost:8080/dosen/dosen/$id_user");
+
+        if ($response->successful()) {
+            $detail = (object) $response->json();
+        } else {
+            $detail = null;
+        }
 
         return view('dosen.profil', compact('detail'));
     }
 
     public function updateProfil(Request $request)
     {
-      // Simulasi validasi (opsional tapi bagus)
-         $request->validate([
+        $request->validate([
             'nidn' => 'required|numeric',
             'nama_dosen' => 'required|string|max:255',
-         ]);
+        ]);
 
-        // Belum nyimpan ke database beneran
-        return redirect()->route('dosen.profil')->with('success', 'Profil (dummy) berhasil disimpan.');
+        $id_user = session('id_user');
+
+        $response = Http::put("http://localhost:8080/dosen/dosen/$id_user", [
+            'nidn' => $request->nidn,
+            'nama_dosen' => $request->nama_dosen,
+        ]);
+
+        if ($response->successful()) {
+            return redirect()->route('dosen.profil')->with('success', 'Profil berhasil diperbarui.');
+        } else {
+            return redirect()->route('dosen.profil')->with('error', 'Gagal memperbarui profil.');
+        }
     }
-
-
 }

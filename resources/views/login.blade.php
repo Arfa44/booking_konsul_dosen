@@ -80,7 +80,7 @@
                     <h1 class="mb-2">Login</h1>
                     <h3 class="mb-4">Sistem Booking Konsultasi Dosen</h3>
 
-                    <form method="POST" action="{{ route('login') }}">
+                    <form method="POST" action="{{ route('auth') }}">
                         @csrf
 
                         <div class="mb-3 text-start">

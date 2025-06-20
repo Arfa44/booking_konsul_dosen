@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class MahasiswaController extends Controller
 {
@@ -11,99 +12,120 @@ class MahasiswaController extends Controller
         return view('mahasiswa.index_mahasiswa');
     }
 
+    // =======================
+    // LIHAT JADWAL DOSEN
+    // =======================
+    public function jadwalDosen()
+    {
+        $response = Http::get('http://localhost:8000/mahasiswa/lihatJadwal');
 
+        if ($response->successful()) {
+            $jadwal = $response->json();
+        } else {
+            $jadwal = [];
+        }
 
-        public function jadwalDosen()
-        {
-         $jadwal = [
-            (object)[
-             'dosen' => (object)['nama' => 'Pak Budi'],
-             'tanggal' => '2025-06-18', // ganti 'Senin' jadi tanggal asli
-             'jam_mulai' => '08:00',
-             'jam_selesai' => '10:00',
-             'ruang' => 'Ruang 101',
-            ],
-            (object)[
-                'dosen' => (object)['nama' => 'Bu Sari'],
-                'tanggal' => '2025-06-20', // ganti 'Rabu' jadi tanggal asli
-                'jam_mulai' => '13:00',
-                'jam_selesai' => '15:00',
-                'ruang' => 'Ruang 202',
-             ]
-        ];
+        return view('mahasiswa.jadwal_dosen', compact('jadwal'));
+    }
 
-    return view('mahasiswa.jadwal_dosen', compact('jadwal'));
-}
-
-
-
+    // =======================
+    // FORM BOOKING KONSULTASI
+    // =======================
     public function formBooking()
     {
-    // Dummy data dosen. Nantinya ambil dari database
-    $daftarDosen = [
-        ['id' => 1, 'nama' => 'Pak Budi'],
-        ['id' => 2, 'nama' => 'Bu Sari'],
-    ];
+        $response = Http::get('http://localhost:8000/mahasiswa/konsultasi');
 
-    return view('mahasiswa.form_booking', compact('daftarDosen'));
+        if ($response->successful()) {
+            $daftarDosen = $response->json();
+        } else {
+            $daftarDosen = [];
+        }
+
+        return view('mahasiswa.form_booking', compact('daftarDosen'));
     }
 
     public function simpanBooking(Request $request)
     {
-    // Validasi data (boleh kamu kembangkan)
-    $request->validate([
-        'dosen_id' => 'required',
-        'tanggal' => 'required|date',
-        'topik' => 'required|string|max:255',
-    ]);
+        $request->validate([
+            'dosen_id' => 'required',
+            'tanggal' => 'required|date',
+            'topik' => 'required|string|max:255',
+        ]);
 
-    // Simpan ke database nanti (untuk sekarang bisa simpan ke session atau tampilkan alert)
-    return redirect()->back()->with('success', 'Booking konsultasi berhasil dikirim.');
+        $response = Http::post('http://localhost:8000/mahasiswa/konsultasi', [
+            'dosen_id' => $request->dosen_id,
+            'tanggal' => $request->tanggal,
+            'topik' => $request->topik,
+            'mahasiswa_id' => session('id_user'), // asumsi kamu simpan ID user setelah login
+        ]);
+
+        if ($response->successful()) {
+            return redirect()->back()->with('success', 'Booking konsultasi berhasil dikirim.');
+        } else {
+            return redirect()->back()->with('error', 'Gagal melakukan booking.');
+        }
     }
 
-    
-        public function statusBooking()
+    // =======================
+    // STATUS BOOKING SAYA
+    // =======================
+    public function statusBooking()
     {
-    // Data dummy (nanti ambil dari tabel booking)
-    $bookingSaya = [
-        [
-            'dosen' => 'Pak Budi',
-            'tanggal' => '2025-06-18',
-            'topik' => 'Bimbingan TA',
-            'status' => 'Menunggu'
-        ],
-        [
-            'dosen' => 'Bu Sari',
-            'tanggal' => '2025-06-20',
-            'topik' => 'Bahas laporan',
-            'status' => 'Disetujui'
-        ]
-    ];
+        $id_user = session('id_user'); // sesuaikan dengan session login kamu
 
-    return view('mahasiswa.status_booking', compact('bookingSaya'));
+        $response = Http::get("http://localhost:8080/mahasiswa/konsultasi/$id_user");
+
+        if ($response->successful()) {
+            $bookingSaya = $response->json();
+        } else {
+            $bookingSaya = [];
+        }
+
+        return view('mahasiswa.status_booking', compact('bookingSaya'));
     }
 
-    //PROFIL
+    // =======================
+    // PROFIL MAHASISWA
+    // =======================
     public function profil()
     {
-    // Data dummy
-    $profil = (object)[
-        'NPM' => '230302075',
-        'nama_mhs' => 'Anisatun Faoziah',
-        'kelas_mhs' => 'TI-2D',
-        'prodi_mhs' => 'Teknik Informatika',
-        'jurusan_mhs' => 'Komputer dan Bisnis',
-        ];
+        $id_user = session('id_user');
 
-     return view('mahasiswa.profil', compact('profil'));
+        $response = Http::get("http://localhost:8080/mahasiswa/mahasiswa/$id_user");
+
+        if ($response->successful()) {
+            $profil = (object) $response->json(); // disesuaikan jika struktur ada di ['data']
+        } else {
+            $profil = null;
+        }
+
+        return view('mahasiswa.profil', compact('profil'));
     }
 
     public function simpanProfil(Request $request)
     {
-        // Belum simpan ke database, tampilkan alert dummy
-         return redirect()->route('mahasiswa.profil')->with('success', 'Profil berhasil disimpan (dummy).');
+        $request->validate([
+            'NPM' => 'required|string',
+            'nama_mhs' => 'required|string',
+            'kelas_mhs' => 'required|string',
+            'prodi_mhs' => 'required|string',
+            'jurusan_mhs' => 'required|string',
+        ]);
+
+        $id_user = session('id_user');
+
+        $response = Http::put("http://localhost:8080/mahasiswa/mahasiswa/$id_user", [
+            'NPM' => $request->NPM,
+            'nama_mhs' => $request->nama_mhs,
+            'kelas_mhs' => $request->kelas_mhs,
+            'prodi_mhs' => $request->prodi_mhs,
+            'jurusan_mhs' => $request->jurusan_mhs,
+        ]);
+
+        if ($response->successful()) {
+            return redirect()->route('mahasiswa.profil')->with('success', 'Profil berhasil diperbarui.');
+        } else {
+            return redirect()->route('mahasiswa.profil')->with('error', 'Gagal memperbarui profil.');
+        }
     }
-
-
-
 }

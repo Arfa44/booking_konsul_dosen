@@ -16,7 +16,7 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         // GANTI: endpoint login ke yang umum (bukan khusus mahasiswa)
-        $response = Http::post('http://alamat-api-kamu.com/api/login', [
+        $response = Http::post('http://localhost:8080/auth/login', [
             'email' => $request->email,
             'password' => $request->password
         ]);
@@ -39,8 +39,8 @@ class LoginController extends Controller
             } else {
                 return back()->with('error', 'Role tidak dikenali.');
             }
-        } else {
-            return back()->with('error', 'Email atau password salah.');
+            } else {
+                    return back()->with('error', 'Email atau password salah.');
         }
     }
 }
